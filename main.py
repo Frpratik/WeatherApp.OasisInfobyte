@@ -1,8 +1,9 @@
 import requests
 import tkinter as tk
-from tkinter import messagebox, StringVar, ttk
+from tkinter import messagebox, StringVar
 from PIL import Image, ImageTk
 import io
+import geocoder  
 
 def get_weather(api_key, location, unit='metric'):
     """Fetch weather data for a specified location."""
@@ -14,12 +15,20 @@ def get_weather(api_key, location, unit='metric'):
     else:
         return None
 
-def display_weather(api_key, unit):
-    """Display weather information based on user input."""
-    location = location_entry.get()
-    
+def get_current_location():
+    """Use geocoder to get the user's current location based on IP."""
+    g = geocoder.ip('me')
+    print(f"Detected City: {g.city}")  
+    return g.city
+
+def display_weather(api_key, unit, location=None):
+    """Display weather information based on user input or GPS location."""
     if not location:
-        messagebox.showerror("Input Error", "Please enter a city name or ZIP code.")
+        location = location_entry.get()
+
+    # If no location is entered or detected, prompt for a valid input
+    if not location:
+        messagebox.showerror("Location Error", "Unable to detect your location. Please enter a city name or ZIP code.")
         return
     
     weather_data = get_weather(api_key, location, unit)
@@ -47,7 +56,7 @@ def display_weather(api_key, unit):
 
         messagebox.showinfo("Weather Info", result)
     else:
-        messagebox.showerror("Error", "City not found.")
+        messagebox.showerror("Error", "City not found. Please check the city name or try another location.")
 
 def load_image(url):
     """Load weather icon from URL and display it."""
@@ -62,11 +71,19 @@ def load_image(url):
     except Exception as e:
         print("Error loading image:", e)
 
+def use_gps_location(api_key, unit):
+    """Fetch and display weather based on GPS-detected location."""
+    location = get_current_location()
+    if location:
+        display_weather(api_key, unit, location=location)
+    else:
+        messagebox.showerror("Error", "Could not detect your location automatically. Please try again or enter manually.")
+
 # Setting up the GUI
 root = tk.Tk()
 root.title("Weather App")
 
-label = tk.Label(root, text="Enter city name or ZIP code:")
+label = tk.Label(root, text="Enter city name or ZIP code or Use below button to access trough GPS:")
 label.pack()
 
 location_entry = tk.Entry(root)
@@ -78,8 +95,13 @@ tk.Radiobutton(unit_frame, text='Celsius (C)', variable=unit_choice, value='C').
 tk.Radiobutton(unit_frame, text='Fahrenheit (F)', variable=unit_choice, value='F').pack(side=tk.LEFT)
 unit_frame.pack()
 
-button = tk.Button(root, text="Get Weather", command=lambda: display_weather("816ef82169eafd7d91e40b372684f15a", 'metric' if unit_choice.get() == 'C' else 'imperial'))
-button.pack()
+# Button to get weather manually by entering location
+manual_button = tk.Button(root, text="Get Weather", command=lambda: display_weather("816ef82169eafd7d91e40b372684f15a", 'metric' if unit_choice.get() == 'C' else 'imperial'))
+manual_button.pack()
+
+# Button for automatic location detection via GPS (geocoder)
+gps_button = tk.Button(root, text="Use My Location", command=lambda: use_gps_location("816ef82169eafd7d91e40b372684f15a", 'metric' if unit_choice.get() == 'C' else 'imperial'))
+gps_button.pack()
 
 icon_label = tk.Label(root)
 icon_label.pack()
